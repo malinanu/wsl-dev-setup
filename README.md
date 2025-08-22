@@ -42,7 +42,7 @@ Automatically installs and configures Node.js, PHP, Python, MySQL, Apache, Nginx
 
 ```bash
 # Clone and run
-git clone https://github.com/yourusername/wsl-dev-setup.git
+git clone https://github.com/malinanu/wsl-dev-setup.git
 cd wsl-dev-setup
 chmod +x setup_dev_env.sh
 ./setup_dev_env.sh
@@ -52,7 +52,7 @@ chmod +x setup_dev_env.sh
 
 ```bash
 # Download and run directly
-curl -fsSL https://raw.githubusercontent.com/yourusername/wsl-dev-setup/main/setup_dev_env.sh -o setup_dev_env.sh
+curl -fsSL https://raw.githubusercontent.com/malinanu/wsl-dev-setup/main/setup_dev_env.sh -o setup_dev_env.sh
 chmod +x setup_dev_env.sh
 ./setup_dev_env.sh
 ```
@@ -229,7 +229,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ### Development Setup
 ```bash
-git clone https://github.com/yourusername/wsl-dev-setup.git
+git clone https://github.com/malinanu/wsl-dev-setup.git
 cd wsl-dev-setup
 # Make your changes
 ./test/run-tests.sh  # Run tests
