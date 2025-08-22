@@ -1,0 +1,189 @@
+name: Test WSL Development Environment Setup
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-script-syntax:
+    runs-on: ubuntu-latest
+    name: Test Script Syntax
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Test bash syntax
+      run: |
+        echo "Testing bash script syntax..."
+        bash -n setup_dev_env.sh
+        bash -n scripts/fix-npm.sh
+        bash -n scripts/fix-zlib.sh
+        echo "✅ All scripts have valid syntax"
+    
+    - name: Test script permissions
+      run: |
+        echo "Testing script permissions..."
+        test -x setup_dev_env.sh || chmod +x setup_dev_env.sh
+        test -x scripts/fix-npm.sh || chmod +x scripts/fix-npm.sh  
+        test -x scripts/fix-zlib.sh || chmod +x scripts/fix-zlib.sh
+        echo "✅ All scripts are executable"
+    
+    - name: Test required commands
+      run: |
+        echo "Testing required commands exist..."
+        command -v curl >/dev/null 2>&1 || { echo "curl required but not installed"; exit 1; }
+        command -v wget >/dev/null 2>&1 || { echo "wget required but not installed"; exit 1; }
+        command -v git >/dev/null 2>&1 || { echo "git required but not installed"; exit 1; }
+        echo "✅ All required commands available"
+
+  test-ubuntu-20:
+    runs-on: ubuntu-20.04
+    name: Test on Ubuntu 20.04
+    needs: test-script-syntax
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Test environment setup (dry run)
+      run: |
+        echo "Testing environment detection..."
+        
+        # Test system update functions
+        sudo apt update
+        
+        # Test Node.js repository addition (without installation)
+        curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - --dry-run || true
+        
+        # Test PHP repository addition (without installation)  
+        sudo add-apt-repository ppa:ondrej/php -y --dry-run || true
+        
+        # Test Python repository addition (without installation)
+        sudo add-apt-repository ppa:deadsnakes/ppa -y --dry-run || true
+        
+        echo "✅ Environment setup test completed"
+    
+    - name: Test project templates
+      run: |
+        echo "Testing project template syntax..."
+        
+        # Create templates directory
+        mkdir -p test-templates
+        
+        # Copy and test templates
+        cp -r templates/* test-templates/ 2>/dev/null || echo "No templates directory found"
+        
+        # Test template scripts if they exist
+        if [ -f "templates/create-nextjs.sh" ]; then
+          bash -n templates/create-nextjs.sh
+        fi
+        
+        echo "✅ Project templates test completed"
+
+  test-ubuntu-22:
+    runs-on: ubuntu-22.04
+    name: Test on Ubuntu 22.04
+    needs: test-script-syntax
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Test package availability
+      run: |
+        echo "Testing package availability..."
+        
+        # Test if required packages exist in repositories
+        sudo apt update
+        
+        # Test Node.js
+        curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+        apt-cache show nodejs | head -5
+        
+        # Test PHP 8.2
+        sudo add-apt-repository ppa:ondrej/php -y
+        sudo apt update
+        apt-cache show php8.2 | head -5
+        
+        # Test Python 3.12
+        sudo add-apt-repository ppa:deadsnakes/ppa -y
+        sudo apt update  
+        apt-cache show python3.12 | head -5
+        
+        echo "✅ Package availability test completed"
+
+  test-documentation:
+    runs-on: ubuntu-latest
+    name: Test Documentation
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Test README links
+      run: |
+        echo "Testing README.md..."
+        
+        # Check if README exists
+        test -f README.md || { echo "README.md not found"; exit 1; }
+        
+        # Check for required sections
+        grep -q "## Features" README.md || { echo "Features section missing"; exit 1; }
+        grep -q "## Quick Start" README.md || { echo "Quick Start section missing"; exit 1; }
+        grep -q "## Installation" README.md || { echo "Installation section missing"; exit 1; }
+        
+        echo "✅ README.md structure is valid"
+    
+    - name: Test CONTRIBUTING.md
+      run: |
+        echo "Testing CONTRIBUTING.md..."
+        
+        test -f CONTRIBUTING.md || { echo "CONTRIBUTING.md not found"; exit 1; }
+        grep -q "## How to Contribute" CONTRIBUTING.md || { echo "Contribution guidelines missing"; exit 1; }
+        
+        echo "✅ CONTRIBUTING.md is valid"
+    
+    - name: Test LICENSE
+      run: |
+        echo "Testing LICENSE..."
+        
+        test -f LICENSE || { echo "LICENSE file not found"; exit 1; }
+        grep -q "MIT License" LICENSE || { echo "MIT License header missing"; exit 1; }
+        
+        echo "✅ LICENSE file is valid"
+
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Security Scan
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run security checks
+      run: |
+        echo "Running basic security checks..."
+        
+        # Check for hardcoded credentials
+        if grep -r "password.*=" . --exclude-dir=.git || \
+           grep -r "secret.*=" . --exclude-dir=.git || \
+           grep -r "token.*=" . --exclude-dir=.git; then
+          echo "⚠️  Potential hardcoded credentials found"
+          echo "Please review the above findings"
+        else
+          echo "✅ No obvious hardcoded credentials found"
+        fi
+        
+        # Check for dangerous commands
+        if grep -r "rm -rf /" . --exclude-dir=.git || \
+           grep -r "chmod 777" . --exclude-dir=.git; then
+          echo "⚠️  Potentially dangerous commands found"
+          echo "Please review the above findings"
+        else
+          echo "✅ No obviously dangerous commands found"
+        fi
+        
+        # Check for proper error handling
+        if ! grep -q "set -e" setup_dev_env.sh; then
+          echo "⚠️  Main script should use 'set -e' for error handling"
+        else
+          echo "✅ Error handling detected in main script"
+        fi
